@@ -17,7 +17,6 @@ protected:
     void keyPressEvent(QKeyEvent *e)
     {
         qDebug() << "Keypress  " << e;
-// 	   qFatal("bah");
         QTextBrowser::keyPressEvent(e);
     }
 
@@ -108,6 +107,13 @@ protected:
         lastWheelEvent.start();
         if (skip) {
 #if 1
+            // if we leave the ControlModifier set, calling QScrollBar::event(we)
+            // will lead to accelerated scroll. Removing the bit gives us normal scroll.
+            // This could be under control of a user option.
+            // Evidently the accelerated scroll shouldn't only happen inertially in that
+            // case, though.
+            modState &= ~Qt::ControlModifier;
+            we->setModifiers(modState);
             if (canVScroll > 0 ) {
                 vScrollBar->event(we);
 			 return;

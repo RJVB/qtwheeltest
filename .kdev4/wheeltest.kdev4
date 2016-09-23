@@ -34,32 +34,29 @@ Remote GDB Shell Script=
 Start With=GdbConsole
 
 [MakeBuilder]
-Additional Options=--nice 10 -w VERBOSE=1
-Default Make Environment Profile=KDE/MacPorts
+Additional Options=--MP --nice 10 -w VERBOSE=1
+Default Make Environment Profile=
 Make Binary=wmake
 Number Of Jobs=1
 
+[Project]
+VersionControlSupport=kdevgit
+
 [QMake_Builder]
-Build_Folder=/Users/bertin/cworks/new/Qt/wheeltest
+Build_Folder=/home/bertin/work/src/Scratch/Qt/wheeltest/qt5
 Build_Type=2
-Extra_Arguments=
+Extra_Arguments=-qt=qt5MP
 Install_Prefix=/opt/local/
-QMake_Binary=/opt/local/bin/qmake-qt5
-
-[QMake_Builder][/Users/bertin/cworks/new/Qt/wheeltest]
-Build_Type=2
-Extra_Arguments=
-Install_Prefix=/opt/local/
-QMake_Binary=/opt/local/bin/qmake-qt5
-
-[QMake_Builder][/home/bertin/work/src/Scratch/Qt/wheeltest/build]
-Build_Type=0
-Extra_Arguments=
-Install_Prefix=
-QMake_Binary=/opt/local/bin/qmake-qt5
+QMake_Binary=/usr/bin/qmake
 
 [QMake_Builder][/home/bertin/work/src/Scratch/Qt/wheeltest/qt4]
 Build_Type=2
-Extra_Arguments=-spec linux-clang-64
+Extra_Arguments=-qt=qt4
 Install_Prefix=/usr/local/
-QMake_Binary=/opt/local/bin/qmake-qt5
+QMake_Binary=/usr/bin/qmake
+
+[QMake_Builder][/home/bertin/work/src/Scratch/Qt/wheeltest/qt5]
+Build_Type=2
+Extra_Arguments=-qt=qt5MP
+Install_Prefix=/opt/local/
+QMake_Binary=/usr/bin/qmake
