@@ -72,12 +72,15 @@ protected:
         if (modState & Qt::ControlModifier) {
             // Pressing the Control/Command key within 200ms of the previous "unmodified" wheelevent
             // is not allowed to toggle on text zooming
-            if (lastWheelEventUnmodified && deltaT < 200)
+            if (lastWheelEventUnmodified && deltaT < 200) {
                     accidentalModifier = true;
-            else
+            }
+            else {
                 // hold the Control/Command key for 1s without scrolling to re-allow text zooming
-                if (deltaT > 1000)
+                if (deltaT > 1000) {
                     accidentalModifier = false;
+                }
+            }
             lastWheelEventUnmodified = false;
 //             if (qAbs(we->delta()) > 120) {
 //                 qDebug() << "skipping because of high delta" << we->delta() << "dT=" << deltaT;
@@ -107,10 +110,12 @@ protected:
 #if 1
             if (canVScroll > 0 ) {
                 vScrollBar->event(we);
+			 return;
             }
             if (canHScroll > 0 ) {
                 hScrollBar->event(we);
                 qDebug() << "event handed off to horizontalScrollBar";
+			 return;
             }
 #else
             modState &= ~Qt::ControlModifier;
@@ -146,7 +151,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < 10; ++i) {
         s += "\nMinions ipsum aute velit hahaha voluptate me want bananaaa! Qui wiiiii pepete duis underweaaar. Daa tempor consequat bee do bee do bee do pepete nostrud incididunt belloo! Ut bananaaaa jeje. Hana dul sae po kass tulaliloo daa magna bappleees. Belloo! exercitation qui reprehenderit wiiiii. Bee do bee do bee do duis butt veniam ex aaaaaah po kass magna incididunt poulet tikka masala. Chasy nostrud pepete duis ut et laboris la bodaaa duis para tú."
         "\nSed sit amet bee do bee do bee do chasy poulet tikka masala bananaaaa labore exercitation duis. Para tú elit aliquip jiji. Daa belloo! Esse tank yuuu! Commodo potatoooo minim tatata bala tu. Esse exercitation ad eiusmod laboris aute gelatooo laboris belloo! Sit amet. Aute dolore aute baboiii labore. Po kass belloo! Laboris aaaaaah qui bananaaaa po kass tatata bala tu. Qui dolor consequat butt aute poulet tikka masala butt gelatooo consectetur tempor. Belloo! ad wiiiii para tú. Enim ut underweaaar nisi hana dul sae poopayee poopayee butt tulaliloo gelatooo."
-        "\nNisi hahaha daa tempor jeje. Exercitation magna aute underweaaar para tú po kass daa nisi veniam duis ut. Occaecat aliquip exercitation ad bappleees para tú tempor ex voluptate. Consectetur officia ut po kass hana dul sae officia. Belloo! dolore labore hahaha bananaaaa hana dul sae uuuhhh hana dul sae dolor elit. Esse commodo me want bananaaa! Laboris hahaha la bodaaa quis. Para tú baboiii hana dul sae jiji labore baboiii la bodaaa esse duis officia. Bee do bee do bee do poulet tikka masala hana dul sae ullamco pepete occaecat elit. Bappleees po kass irure tatata bala tu potatoooo minim me want bananaaa! Incididunt commodo bananaaaa.";
+        "\nNisi hahaha daa tempor jeje. Exercitation magna aute underweaaar para tú po kass daa nisi veniam duis ut. Occaecat aliquip exercitation ad bappleees para tú tempor ex voluptate. Consectetur officia ut po kass hana dul sae officia. Belloo! dolore labore hahaha bananaaaa hana dul sae uuuhhh hana dul sae dolor elit. Esse commodo me want bananaaa! Laboris hahaha la bodaaa quis. Para tú baboiii hana dul sae jiji labore baboiii la bodaaa esse duis officia. Bee do bee do bee do poulet tikka masala hana dul sae ullamco pepete occaecat elit. Bappleees po kass irure tatata bala tu potatoooo minim me want bananaaa! Incididunt commodo bananaaaa."
         "\nBaboiii officia consequat tempor aliquip poulet tikka masala reprehenderit para tú tulaliloo ad pepete. Baboiii la bodaaa belloo! Velit poulet tikka masala aliqua. Reprehenderit tank yuuu! Consectetur aaaaaah nisi veniam officia butt tatata bala tu consectetur duis. Tank yuuu! ex sed poopayee magna. Jeje incididunt labore laboris tulaliloo underweaaar. Aliquip minim bappleees la bodaaa aute.";
     }
     t->setWindowTitle("Protected against accidental text zooming");
