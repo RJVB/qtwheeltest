@@ -3,27 +3,39 @@
 
 #include <QApplication>
 #include <QElapsedTimer>
-#include <QTextBrowser>
 #include <QScrollBar>
 #include <QWheelEvent>
 #include <QtDebug>
 
-class TextBrowser : public QTextBrowser
+#define TXTCLASS QTextEdit
+#define STR(t)  # t
+#define STRING(t) STR(t)
+
+#if TXTCLASS == QTextBrowser
+#include <QTextBrowser>
+#elif TXTCLASS == QTextEdit
+#include <QTextEdit>
+#endif
+
+template <class QTxt>
+class QTextWidget : public QTxt
 {
 public:
-    TextBrowser() : QTextBrowser(), accidentalModifier(false), lastWheelEventUnmodified(false)
-    {}
+    QTextWidget() : QTxt(), accidentalModifier(false), lastWheelEventUnmodified(false)
+    {
+        qWarning() << Q_FUNC_INFO << "protected" << STRING(TXTCLASS) << "allocated:" << this;
+    }
 protected:
     void keyPressEvent(QKeyEvent *e)
     {
         qDebug() << "Keypress  " << e;
-        QTextBrowser::keyPressEvent(e);
+        QTxt::keyPressEvent(e);
     }
 
     void keyReleaseEvent(QKeyEvent *e)
     {
         qDebug() << "Keyrelease" << e;
-        QTextBrowser::keyReleaseEvent(e);
+        QTxt::keyReleaseEvent(e);
     }
 
     void wheelEvent(QWheelEvent *we) {
@@ -31,8 +43,8 @@ protected:
         qint64 deltaT = lastWheelEvent.elapsed();
         Qt::KeyboardModifiers modState = we->modifiers();
         int canHScroll, canVScroll;
-        QScrollBar *hScrollBar = horizontalScrollBar(),
-                    *vScrollBar = verticalScrollBar();
+        QScrollBar *hScrollBar = QTxt::horizontalScrollBar(),
+                    *vScrollBar = QTxt::verticalScrollBar();
         if (hScrollBar && hScrollBar->minimum() == hScrollBar->maximum()) {
             hScrollBar = NULL;
         }
@@ -132,7 +144,7 @@ protected:
             QWheelEvent *lwe = new QWheelEvent(we->pos(), we->globalPos(), we->delta(), we->buttons(), modState, we->orientation());
 #endif
             if (lwe) {
-                QTextBrowser::wheelEvent(lwe);
+                QTxt::wheelEvent(lwe);
                 delete lwe;
                 return;
             }
@@ -140,7 +152,7 @@ protected:
         }
         // we can get here with skip==true in case of failure to create a temporary event, so retest skip
         if (!skip) {
-            QTextBrowser::wheelEvent(we);
+            QTxt::wheelEvent(we);
         }
     }
 private:
@@ -152,7 +164,7 @@ private:
 int main(int argc, char **argv)
 {
     QApplication a(argc, argv);
-    TextBrowser *t = new TextBrowser;
+    QTextWidget<TXTCLASS> *t = new QTextWidget<TXTCLASS>;
     QString s;
     for (int i = 0; i < 10; ++i) {
         s += "\nMinions ipsum aute velit hahaha voluptate me want bananaaa! Qui wiiiii pepete duis underweaaar. Daa tempor consequat bee do bee do bee do pepete nostrud incididunt belloo! Ut bananaaaa jeje. Hana dul sae po kass tulaliloo daa magna bappleees. Belloo! exercitation qui reprehenderit wiiiii. Bee do bee do bee do duis butt veniam ex aaaaaah po kass magna incididunt poulet tikka masala. Chasy nostrud pepete duis ut et laboris la bodaaa duis para tú."
@@ -165,8 +177,8 @@ int main(int argc, char **argv)
     t->resize(296,480);
     t->show();
 
-    QTextBrowser qt;
-    qt.setWindowTitle("Stock QTextBrowser");
+    TXTCLASS qt;
+    qt.setWindowTitle("Stock " STRING(TXTCLASS));
     qt.setText(s);
     qt.resize(296,480);
     qt.show();
