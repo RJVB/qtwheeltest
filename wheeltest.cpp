@@ -4,26 +4,29 @@
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QScrollBar>
+#include <QMouseEvent>
 #include <QWheelEvent>
 #include <QtDebug>
+#include <QCommandLineParser>
 
 #define TXTCLASS QTextEdit
 #define STR(t)  # t
 #define STRING(t) STR(t)
 
-#if TXTCLASS == QTextBrowser
 #include <QTextBrowser>
-#elif TXTCLASS == QTextEdit
 #include <QTextEdit>
-#endif
 
 template <class QTxt>
 class QTextWidget : public QTxt
 {
 public:
-    QTextWidget() : QTxt(), accidentalModifier(false), lastWheelEventUnmodified(false)
+    QTextWidget()
+        : QTxt()
+        , accidentalModifier(false)
+        , lastWheelEventUnmodified(false)
+        , lastEventSource(-1)
     {
-        qWarning() << Q_FUNC_INFO << "protected" << STRING(TXTCLASS) << "allocated:" << this;
+        qWarning() << Q_FUNC_INFO << "protected" << QTxt::metaObject()->className() << "allocated:" << this;
     }
 protected:
     void keyPressEvent(QKeyEvent *e)
@@ -75,6 +78,13 @@ protected:
         else {
             canVScroll = -1;
         }
+#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
+        Qt::MouseEventSource s = we->source();
+        if (s != lastEventSource) {
+            qWarning() << "WheelEvent source is now" << s;
+            lastEventSource = s;
+        }
+#endif
         if (!(canHScroll && canVScroll)) {
             qDebug() << "scrollbar(s) at extreme(s): ignoring event" << we;
             we->ignore();
@@ -133,21 +143,21 @@ protected:
             if (canHScroll > 0 ) {
                 hScrollBar->event(we);
                 qDebug() << "event handed off to horizontalScrollBar";
-			 return;
+                return;
             }
 #else
             modState &= ~Qt::ControlModifier;
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
-            QWheelEvent *lwe = new QWheelEvent(we->pos(), we->globalPos(), we->pixelDelta(), we->angleDelta(),
+#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
+            QWheelEvent lwe(we->pos(), we->globalPos(), we->pixelDelta(), we->angleDelta(),
+                                            we->delta(), we->orientation(), we->buttons(), modState, we->phase(), Qt::MouseEventSynthesizedByApplication);
+#elif QT_VERSION >= QT_VERSION_CHECK(5,0,0)
+            QWheelEvent lwe(we->pos(), we->globalPos(), we->pixelDelta(), we->angleDelta(),
                                             we->delta(), we->orientation(), we->buttons(), modState, we->phase());
 #else
-            QWheelEvent *lwe = new QWheelEvent(we->pos(), we->globalPos(), we->delta(), we->buttons(), modState, we->orientation());
+            QWheelEvent lwe(we->pos(), we->globalPos(), we->delta(), we->buttons(), modState, we->orientation());
 #endif
-            if (lwe) {
-                QTxt::wheelEvent(lwe);
-                delete lwe;
-                return;
-            }
+            QTxt::wheelEvent(&lwe);
+            return;
 #endif
         }
         // we can get here with skip==true in case of failure to create a temporary event, so retest skip
@@ -159,12 +169,21 @@ private:
     QElapsedTimer lastWheelEvent;
     bool accidentalModifier;
     bool lastWheelEventUnmodified;
+    int lastEventSource;
 };
 
 int main(int argc, char **argv)
 {
     QApplication a(argc, argv);
-    QTextWidget<TXTCLASS> *t = new QTextWidget<TXTCLASS>;
+    QCommandLineParser parser;
+    parser.setApplicationDescription(a.translate("wheeltest", "testing protection against accidental zooming/fast-scrolling"));
+    const QCommandLineOption qteOption(QStringLiteral("QTextEdit"), QStringLiteral("Protect a QTextEdit widget (default)"));
+    const QCommandLineOption qtbOption(QStringLiteral("QTextBrowser"), QStringLiteral("Protect a QTextBrowser widget"));
+    parser.addOptions({qteOption, qtbOption});
+    parser.addHelpOption();
+    parser.addVersionOption();
+    parser.process(a);
+
     QString s;
     for (int i = 0; i < 10; ++i) {
         s += "\nMinions ipsum aute velit hahaha voluptate me want bananaaa! Qui wiiiii pepete duis underweaaar. Daa tempor consequat bee do bee do bee do pepete nostrud incididunt belloo! Ut bananaaaa jeje. Hana dul sae po kass tulaliloo daa magna bappleees. Belloo! exercitation qui reprehenderit wiiiii. Bee do bee do bee do duis butt veniam ex aaaaaah po kass magna incididunt poulet tikka masala. Chasy nostrud pepete duis ut et laboris la bodaaa duis para tú."
@@ -172,15 +191,29 @@ int main(int argc, char **argv)
         "\nNisi hahaha daa tempor jeje. Exercitation magna aute underweaaar para tú po kass daa nisi veniam duis ut. Occaecat aliquip exercitation ad bappleees para tú tempor ex voluptate. Consectetur officia ut po kass hana dul sae officia. Belloo! dolore labore hahaha bananaaaa hana dul sae uuuhhh hana dul sae dolor elit. Esse commodo me want bananaaa! Laboris hahaha la bodaaa quis. Para tú baboiii hana dul sae jiji labore baboiii la bodaaa esse duis officia. Bee do bee do bee do poulet tikka masala hana dul sae ullamco pepete occaecat elit. Bappleees po kass irure tatata bala tu potatoooo minim me want bananaaa! Incididunt commodo bananaaaa."
         "\nBaboiii officia consequat tempor aliquip poulet tikka masala reprehenderit para tú tulaliloo ad pepete. Baboiii la bodaaa belloo! Velit poulet tikka masala aliqua. Reprehenderit tank yuuu! Consectetur aaaaaah nisi veniam officia butt tatata bala tu consectetur duis. Tank yuuu! ex sed poopayee magna. Jeje incididunt labore laboris tulaliloo underweaaar. Aliquip minim bappleees la bodaaa aute.";
     }
-    t->setWindowTitle("Protected against accidental text zooming");
-    t->setText(s);
-    t->resize(296,480);
-    t->show();
 
-    TXTCLASS qt;
-    qt.setWindowTitle("Stock " STRING(TXTCLASS));
-    qt.setText(s);
-    qt.resize(296,480);
-    qt.show();
+    // QTextBrowser inherits QTextEdit so we can do this:
+    QTextEdit *qt;
+    if (parser.isSet("QTextBrowser")) {
+        QTextWidget<QTextBrowser> *t = new QTextWidget<QTextBrowser>;
+        t->setWindowTitle("Protected against accidental text zooming");
+        t->setText(s);
+        t->resize(296,480);
+        t->show();
+        qt = new QTextBrowser;
+        qt->setWindowTitle("Stock QTextBrowser");
+    } else {
+        QTextWidget<QTextEdit> *t = new QTextWidget<QTextEdit>;
+        t->setWindowTitle("Protected against accidental text zooming");
+        t->setText(s);
+        t->resize(296,480);
+        t->show();
+        qt = new QTextEdit;
+        qt->setWindowTitle("Stock QTextEdit");
+    }
+
+    qt->setText(s);
+    qt->resize(296,480);
+    qt->show();
     return a.exec();
 }

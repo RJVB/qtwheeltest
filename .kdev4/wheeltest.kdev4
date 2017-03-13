@@ -34,7 +34,7 @@ Remote GDB Shell Script=
 Start With=GdbConsole
 
 [MakeBuilder]
-Additional Options=--MP --nice 10 -w VERBOSE=1
+Additional Options=--nice 10 -w VERBOSE=1
 Default Make Environment Profile=
 Make Binary=wmake
 Number Of Jobs=1
@@ -45,9 +45,9 @@ VersionControlSupport=kdevgit
 [QMake_Builder]
 Build_Folder=/home/bertin/work/src/Scratch/Qt/wheeltest/qt5
 Build_Type=2
-Extra_Arguments=-qt=qt5MP
+Extra_Arguments=
 Install_Prefix=/opt/local/
-QMake_Binary=/usr/bin/qmake
+QMake_Binary=/opt/local/bin/qmake-qt5
 
 [QMake_Builder][/home/bertin/work/src/Scratch/Qt/wheeltest/qt4]
 Build_Type=2
@@ -57,6 +57,6 @@ QMake_Binary=/usr/bin/qmake
 
 [QMake_Builder][/home/bertin/work/src/Scratch/Qt/wheeltest/qt5]
 Build_Type=2
-Extra_Arguments=-qt=qt5MP
+Extra_Arguments=
 Install_Prefix=/opt/local/
-QMake_Binary=/usr/bin/qmake
+QMake_Binary=/opt/local/bin/qmake-qt5
