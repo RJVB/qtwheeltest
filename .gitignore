@@ -3,6 +3,7 @@
 
 .kdev4
 wheeltest
+qt4
 qt5
 examples/*/*/*
 !examples/*/*/*[.]*

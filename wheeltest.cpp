@@ -7,7 +7,9 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QtDebug>
+#if QT_VERSION >= QT_VERSION_CHECK(5,2,0)
 #include <QCommandLineParser>
+#endif
 
 #define TXTCLASS QTextEdit
 #define STR(t)  # t
@@ -23,10 +25,23 @@ public:
     QTextWidget()
         : QTxt()
         , accidentalModifier(false)
+        , allowAcceleratedScroll(false)
         , lastWheelEventUnmodified(false)
         , lastEventSource(-1)
     {
         qWarning() << Q_FUNC_INFO << "protected" << QTxt::metaObject()->className() << "allocated:" << this;
+    }
+    QTxt *instance()
+    {
+        return this;
+    }
+    bool acceleratedScrolling()
+    {
+        return allowAcceleratedScroll;
+    }
+    void setAcceleratedScrolling(bool val)
+    {
+        allowAcceleratedScroll = val;
     }
 protected:
     void keyPressEvent(QKeyEvent *e)
@@ -86,7 +101,7 @@ protected:
         }
 #endif
         if (!(canHScroll && canVScroll)) {
-            qDebug() << "scrollbar(s) at extreme(s): ignoring event" << we;
+            qWarning() << "scrollbar(s) at extreme(s): ignoring event" << we;
             we->ignore();
             return;
         }
@@ -104,22 +119,22 @@ protected:
             }
             lastWheelEventUnmodified = false;
 //             if (qAbs(we->delta()) > 120) {
-//                 qDebug() << "skipping because of high delta" << we->delta() << "dT=" << deltaT;
+//                 qWarning() << "skipping because of high delta" << we->delta() << "dT=" << deltaT;
 //                 skip = true;
 //             }
 //             /*else */if (deltaT < 60) {
-//                 qDebug() << "skipping because of fast wheel dT=" << deltaT << "delta=" << we->delta();
+//                 qWarning() << "skipping because of fast wheel dT=" << deltaT << "delta=" << we->delta();
 //                 skip = true;
 //             }
             if (accidentalModifier) {
-                qDebug() << "skipping because of accidental keypress; dT=" << deltaT;
+                qWarning() << "skipping because of accidental keypress; dT=" << deltaT;
                 skip = true;
             }
             if (!skip) {
 #if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
-                qDebug() << "accepting event" << we << "with phase" << we->phase();
+                qWarning() << "accepting event" << we << "with phase" << we->phase();
 #else
-                qDebug() << "accepting event" << we;
+                qWarning() << "accepting event" << we;
 #endif
             }
         } else {
@@ -134,15 +149,17 @@ protected:
             // This could be under control of a user option.
             // Evidently the accelerated scroll shouldn't only happen inertially in that
             // case, though.
-            modState &= ~Qt::ControlModifier;
-            we->setModifiers(modState);
+            if (!allowAcceleratedScroll) {
+                modState &= ~Qt::ControlModifier;
+                we->setModifiers(modState);
+            }
             if (canVScroll > 0 ) {
                 vScrollBar->event(we);
-			 return;
+                return;
             }
             if (canHScroll > 0 ) {
                 hScrollBar->event(we);
-                qDebug() << "event handed off to horizontalScrollBar";
+                qWarning() << "event handed off to horizontalScrollBar";
                 return;
             }
 #else
@@ -163,11 +180,14 @@ protected:
         // we can get here with skip==true in case of failure to create a temporary event, so retest skip
         if (!skip) {
             QTxt::wheelEvent(we);
+        } else {
+            we->ignore();
         }
     }
 private:
     QElapsedTimer lastWheelEvent;
     bool accidentalModifier;
+    bool allowAcceleratedScroll;
     bool lastWheelEventUnmodified;
     int lastEventSource;
 };
@@ -175,14 +195,20 @@ private:
 int main(int argc, char **argv)
 {
     QApplication a(argc, argv);
+    bool useTextEdit = false, allowAccelerated = false;
+#if QT_VERSION >= QT_VERSION_CHECK(5,2,0)
     QCommandLineParser parser;
     parser.setApplicationDescription(a.translate("wheeltest", "testing protection against accidental zooming/fast-scrolling"));
-    const QCommandLineOption qteOption(QStringLiteral("QTextEdit"), QStringLiteral("Protect a QTextEdit widget (default)"));
-    const QCommandLineOption qtbOption(QStringLiteral("QTextBrowser"), QStringLiteral("Protect a QTextBrowser widget"));
-    parser.addOptions({qteOption, qtbOption});
+    const QCommandLineOption qteOption(QStringLiteral("QTextEdit"), QStringLiteral("Protect a QTextEdit widget"));
+    const QCommandLineOption qtbOption(QStringLiteral("QTextBrowser"), QStringLiteral("Protect a QTextBrowser widget (default)"));
+    const QCommandLineOption accelOption(QStringLiteral("accelerated"), QStringLiteral("Pressing the Ctrl/Command key during scrolling activates activated scrolling"));
+    parser.addOptions({qteOption, qtbOption, accelOption});
     parser.addHelpOption();
     parser.addVersionOption();
     parser.process(a);
+    useTextEdit = parser.isSet("QTextEdit");
+    allowAccelerated = parser.isSet("accelerated");
+#endif
 
     QString s;
     for (int i = 0; i < 10; ++i) {
@@ -193,27 +219,35 @@ int main(int argc, char **argv)
     }
 
     // QTextBrowser inherits QTextEdit so we can do this:
-    QTextEdit *qt;
-    if (parser.isSet("QTextBrowser")) {
-        QTextWidget<QTextBrowser> *t = new QTextWidget<QTextBrowser>;
-        t->setWindowTitle("Protected against accidental text zooming");
-        t->setText(s);
-        t->resize(296,480);
-        t->show();
-        qt = new QTextBrowser;
-        qt->setWindowTitle("Stock QTextBrowser");
-    } else {
-        QTextWidget<QTextEdit> *t = new QTextWidget<QTextEdit>;
-        t->setWindowTitle("Protected against accidental text zooming");
-        t->setText(s);
-        t->resize(296,480);
-        t->show();
+    QTextEdit *t, *qt;
+    if (useTextEdit) {
+        QTextWidget<QTextEdit> *tmp = new QTextWidget<QTextEdit>;
+        tmp->setWindowTitle("Protected against accidental text zooming");
+        if (allowAccelerated) {
+            tmp->setAcceleratedScrolling(true);
+        }
+        t = tmp->instance();
         qt = new QTextEdit;
         qt->setWindowTitle("Stock QTextEdit");
+    } else
+    {
+        QTextWidget<QTextBrowser> *tmp = new QTextWidget<QTextBrowser>;
+        tmp->setWindowTitle("Protected against accidental text zooming");
+        if (allowAccelerated) {
+            tmp->setAcceleratedScrolling(true);
+        }
+        t = tmp->instance();
+        qt = new QTextBrowser;
+        qt->setWindowTitle("Stock QTextBrowser");
     }
+    t->setText(s);
+    t->resize(296,480);
+    t->setReadOnly(false);
+    t->show();
 
     qt->setText(s);
     qt->resize(296,480);
+    qt->setReadOnly(false);
     qt->show();
     return a.exec();
 }
