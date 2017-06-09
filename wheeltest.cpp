@@ -18,6 +18,9 @@
 #include <QTextBrowser>
 #include <QTextEdit>
 
+#include <QIODevice>
+#include <QDebug>
+
 template <class QTxt>
 class QTextWidget : public QTxt
 {
@@ -30,6 +33,7 @@ public:
         , lastEventSource(-1)
     {
         qWarning() << Q_FUNC_INFO << "protected" << QTxt::metaObject()->className() << "allocated:" << this;
+        qerr.open(stderr, QIODevice::WriteOnly);
     }
     QTxt *instance()
     {
@@ -44,16 +48,23 @@ public:
         allowAcceleratedScroll = val;
     }
 protected:
-    void keyPressEvent(QKeyEvent *e)
-    {
-        qDebug() << "Keypress  " << e;
-        QTxt::keyPressEvent(e);
-    }
+//     void keyPressEvent(QKeyEvent *e)
+//     {
+//         qDebug() << "Keypress  " << e;
+//         QTxt::keyPressEvent(e);
+//     }
+// 
+//     void keyReleaseEvent(QKeyEvent *e)
+//     {
+//         qDebug() << "Keyrelease" << e;
+//         QTxt::keyReleaseEvent(e);
+//     }
 
-    void keyReleaseEvent(QKeyEvent *e)
-    {
-        qDebug() << "Keyrelease" << e;
-        QTxt::keyReleaseEvent(e);
+    bool event(QEvent *e) {
+        if (e->type() != QEvent::UpdateRequest) {
+            QDebug(&qerr) << e << endl;
+        }
+        return QTxt::event(e);
     }
 
     void wheelEvent(QWheelEvent *we) {
@@ -190,6 +201,7 @@ private:
     bool allowAcceleratedScroll;
     bool lastWheelEventUnmodified;
     int lastEventSource;
+    QFile qerr;
 };
 
 int main(int argc, char **argv)
