@@ -25,12 +25,13 @@ template <class QTxt>
 class QTextWidget : public QTxt
 {
 public:
-    QTextWidget()
-        : QTxt()
+    QTextWidget(QWidget *parent=nullptr)
+        : QTxt(parent)
         , accidentalModifier(false)
         , allowAcceleratedScroll(false)
         , lastWheelEventUnmodified(false)
         , lastEventSource(-1)
+        , dumpEvents(false)
     {
         qWarning() << Q_FUNC_INFO << "protected" << QTxt::metaObject()->className() << "allocated:" << this;
         qerr.open(stderr, QIODevice::WriteOnly);
@@ -61,7 +62,7 @@ protected:
 //     }
 
     bool event(QEvent *e) {
-        if (e->type() != QEvent::UpdateRequest) {
+        if (e->type() != QEvent::UpdateRequest && dumpEvents) {
             QDebug(&qerr) << e << endl;
         }
         return QTxt::event(e);
@@ -202,24 +203,53 @@ private:
     bool lastWheelEventUnmodified;
     int lastEventSource;
     QFile qerr;
+    bool dumpEvents;
+};
+
+class QTextEditWidget : public QTextWidget<QTextEdit>
+{
+    Q_OBJECT
+public:
+    QTextEditWidget(QWidget *parent=nullptr)
+        : QTextWidget<QTextEdit>(parent)
+    {
+        connect(this, &QTextEdit::cursorPositionChanged, this, &QTextEditWidget::showCursorPosition);
+        title = windowTitle();
+    }
+
+    void showCursorPosition()
+    {
+        const auto cursorPos = textCursor();
+        QTextEdit::setWindowTitle(QStringLiteral("[%1,%2] ").arg(cursorPos.blockNumber()).arg(cursorPos.positionInBlock()) + title);
+    }
+
+    void setWindowTitle(const QString &txt)
+    {
+        title = txt;
+        QTextEdit::setWindowTitle(txt);
+    }
+
+    QString title;
 };
 
 int main(int argc, char **argv)
 {
     QApplication a(argc, argv);
-    bool useTextEdit = false, allowAccelerated = false;
+    bool useTextEdit = false, allowAccelerated = false, dumpEvents = false;
 #if QT_VERSION >= QT_VERSION_CHECK(5,2,0)
     QCommandLineParser parser;
     parser.setApplicationDescription(a.translate("wheeltest", "testing protection against accidental zooming/fast-scrolling"));
     const QCommandLineOption qteOption(QStringLiteral("QTextEdit"), QStringLiteral("Protect a QTextEdit widget"));
     const QCommandLineOption qtbOption(QStringLiteral("QTextBrowser"), QStringLiteral("Protect a QTextBrowser widget (default)"));
     const QCommandLineOption accelOption(QStringLiteral("accelerated"), QStringLiteral("Pressing the Ctrl/Command key during scrolling activates activated scrolling"));
-    parser.addOptions({qteOption, qtbOption, accelOption});
+    const QCommandLineOption dumpOption(QStringLiteral("dumpEvents"), QStringLiteral("print events on the terminal"));
+    parser.addOptions({qteOption, qtbOption, accelOption, dumpOption});
     parser.addHelpOption();
     parser.addVersionOption();
     parser.process(a);
     useTextEdit = parser.isSet("QTextEdit");
     allowAccelerated = parser.isSet("accelerated");
+    dumpEvents= parser.isSet("dumpEvents");
 #else
     for (int i = 1 ; i < argc ; ++i) {
         const char *arg = argv[i];
@@ -229,6 +259,8 @@ int main(int argc, char **argv)
             useTextEdit = false;
         } else if (strcmp(arg, "--accelerated") == 0) {
             allowAccelerated = true;
+        } else if (strcmp(arg, "--dumpEvents") == 0) {
+            dumpEvents = true;
         }
     }
 #endif
@@ -244,7 +276,7 @@ int main(int argc, char **argv)
     // QTextBrowser inherits QTextEdit so we can do this:
     QTextEdit *t, *qt;
     if (useTextEdit) {
-        QTextWidget<QTextEdit> *tmp = new QTextWidget<QTextEdit>;
+        QTextEditWidget *tmp = new QTextEditWidget;
         tmp->setWindowTitle("Protected against accidental text zooming");
         if (allowAccelerated) {
             tmp->setAcceleratedScrolling(true);
@@ -265,11 +297,15 @@ int main(int argc, char **argv)
     t->setText(s);
     t->resize(296,480);
     t->setReadOnly(false);
-    t->show();
 
     qt->setText(s);
-    qt->resize(296,480);
+    qt->resize(306,470);
     qt->setReadOnly(false);
+
     qt->show();
+    t->show();
+
     return a.exec();
 }
+
+#include "wheeltest.moc"
