@@ -220,6 +220,17 @@ int main(int argc, char **argv)
     parser.process(a);
     useTextEdit = parser.isSet("QTextEdit");
     allowAccelerated = parser.isSet("accelerated");
+#else
+    for (int i = 1 ; i < argc ; ++i) {
+        const char *arg = argv[i];
+        if (strcmp(arg, "--QTextEdit") == 0) {
+            useTextEdit = true;
+        } else if (strcmp(arg, "--QTextBrowser") == 0) {
+            useTextEdit = false;
+        } else if (strcmp(arg, "--accelerated") == 0) {
+            allowAccelerated = true;
+        }
+    }
 #endif
 
     QString s;
@@ -241,8 +252,7 @@ int main(int argc, char **argv)
         t = tmp->instance();
         qt = new QTextEdit;
         qt->setWindowTitle("Stock QTextEdit");
-    } else
-    {
+    } else {
         QTextWidget<QTextBrowser> *tmp = new QTextWidget<QTextBrowser>;
         tmp->setWindowTitle("Protected against accidental text zooming");
         if (allowAccelerated) {
