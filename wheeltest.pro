@@ -6,4 +6,4 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 } else {
     TARGET=wheeltest-qt4
 }
-CONFIG += debug
+CONFIG += debug c++11

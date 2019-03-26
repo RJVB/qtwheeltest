@@ -27,11 +27,11 @@ class QTextWidget : public QTxt
 public:
     QTextWidget(QWidget *parent=nullptr)
         : QTxt(parent)
+        , dumpEvents(false)
         , accidentalModifier(false)
         , allowAcceleratedScroll(false)
         , lastWheelEventUnmodified(false)
         , lastEventSource(-1)
-        , dumpEvents(false)
     {
         qWarning() << Q_FUNC_INFO << "protected" << QTxt::metaObject()->className() << "allocated:" << this;
         qerr.open(stderr, QIODevice::WriteOnly);
@@ -48,6 +48,19 @@ public:
     {
         allowAcceleratedScroll = val;
     }
+
+//     QMenu *createStandardContextMenu()
+//     {
+//         qWarning() << Q_FUNC_INFO;
+//         return QTxt::createStandardContextMenu();
+//     }
+// 
+//     QMenu *createStandardContextMenu(const QPoint &position)
+//     {
+//         qWarning() << Q_FUNC_INFO << "pos=" << position;
+//         return QTxt::createStandardContextMenu(position);
+//     }
+
 protected:
 //     void keyPressEvent(QKeyEvent *e)
 //     {
@@ -66,6 +79,14 @@ protected:
             QDebug(&qerr) << e << endl;
         }
         return QTxt::event(e);
+    }
+
+    void contextMenuEvent(QContextMenuEvent* e)
+    {
+        if (dumpEvents) {
+            QDebug(&qerr) << "contextmenu pos=" << e->pos() << "globalPos=" << e->globalPos();
+        }
+        QTxt::contextMenuEvent(e);
     }
 
     void wheelEvent(QWheelEvent *we) {
@@ -196,6 +217,9 @@ protected:
             we->ignore();
         }
     }
+
+public:
+    bool dumpEvents;
 private:
     QElapsedTimer lastWheelEvent;
     bool accidentalModifier;
@@ -203,7 +227,6 @@ private:
     bool lastWheelEventUnmodified;
     int lastEventSource;
     QFile qerr;
-    bool dumpEvents;
 };
 
 class QTextEditWidget : public QTextWidget<QTextEdit>
@@ -213,14 +236,8 @@ public:
     QTextEditWidget(QWidget *parent=nullptr)
         : QTextWidget<QTextEdit>(parent)
     {
-        connect(this, &QTextEdit::cursorPositionChanged, this, &QTextEditWidget::showCursorPosition);
+        connect(this, SIGNAL(cursorPositionChanged()), this, SLOT(showCursorPosition()));
         title = windowTitle();
-    }
-
-    void showCursorPosition()
-    {
-        const auto cursorPos = textCursor();
-        QTextEdit::setWindowTitle(QStringLiteral("[%1,%2] ").arg(cursorPos.blockNumber()).arg(cursorPos.positionInBlock()) + title);
     }
 
     void setWindowTitle(const QString &txt)
@@ -229,6 +246,14 @@ public:
         QTextEdit::setWindowTitle(txt);
     }
 
+public slots:
+    void showCursorPosition()
+    {
+        const auto cursorPos = textCursor();
+        QTextEdit::setWindowTitle(QString("[%1,%2] ").arg(cursorPos.blockNumber()).arg(cursorPos.positionInBlock()) + title);
+    }
+
+private:
     QString title;
 };
 
@@ -281,6 +306,7 @@ int main(int argc, char **argv)
         if (allowAccelerated) {
             tmp->setAcceleratedScrolling(true);
         }
+        tmp->dumpEvents = dumpEvents;
         t = tmp->instance();
         qt = new QTextEdit;
         qt->setWindowTitle("Stock QTextEdit");
@@ -290,6 +316,7 @@ int main(int argc, char **argv)
         if (allowAccelerated) {
             tmp->setAcceleratedScrolling(true);
         }
+        tmp->dumpEvents = dumpEvents;
         t = tmp->instance();
         qt = new QTextBrowser;
         qt->setWindowTitle("Stock QTextBrowser");
